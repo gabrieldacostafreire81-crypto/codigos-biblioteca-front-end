@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Biblioteca — Sistema de Gestão</title>
-  <meta name="description" content="Sistema de gerenciamento de biblioteca" />
-  <link rel="stylesheet" href="/public/styles.css" />
+  <link rel="stylesheet" href="public/styles.css" />
 </head>
 <body>
   <noscript>
@@ -14,17 +13,12 @@
     </p>
   </noscript>
 
-  <script src="/public/js/auth.js"></script>
+  <script src="public/js/auth.js"></script>
   <script>
-    try {
-      if (Auth.isAuthenticated()) {
-        window.location.replace('/public/dashboard.html');
-      } else {
-        window.location.replace('/login.html');
-      }
-    } catch (e) {
-      console.error('Erro de autenticação:', e);
-      window.location.replace('/login.html');
+    if (Auth.isAuthenticated()) {
+      window.location.replace('public/dashboard.html');
+    } else {
+      window.location.replace('public/login.html');
     }
   </script>
 </body>

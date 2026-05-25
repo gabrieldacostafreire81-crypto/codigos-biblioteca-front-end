@@ -2,11 +2,11 @@ function renderLayout(activePage, contentHtml) {
   if (!Auth || !Auth.getUser) throw new Error('Auth module not loaded properly');
   const user = Auth.getUser() || { name: "—", email: "—" };
   const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: "📊", href: "/dashboard.html" },
-    { id: "books", label: "Livros", icon: "📚", href: "/books.html" },
-    { id: "users", label: "Usuários", icon: "👥", href: "/users.html" },
-    { id: "loans", label: "Empréstimos", icon: "🔄", href: "/loans.html" },
-    { id: "reports", label: "Relatórios", icon: "📈", href: "/reports.html" }
+    { id: "dashboard", label: "Dashboard", icon: "📊", href: "./dashboard.html" },
+    { id: "books", label: "Livros", icon: "📚", href: "./books.html" },
+    { id: "users", label: "Usuários", icon: "👥", href: "./users.html" },
+    { id: "loans", label: "Empréstimos", icon: "🔄", href: "./loans.html" },
+    { id: "reports", label: "Relatórios", icon: "📈", href: "./reports.html" }
   ];
 
   const navHtml = navItems.map(item => `
