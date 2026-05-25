@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teste — Biblioteca</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <div class="login-logo">
+      <div class="logo-box">✅</div>
+      <h1>Sistema Funcionando!</h1>
+      <p>Biblioteca — Sistema de Gestão</p>
+    </div>
+
+    <div class="login-card">
+      <h2>Status de Carregamento</h2>
+      <div id="status"></div>
+      <button class="btn btn-primary btn-block" style="margin-top: 1rem;" onclick="window.location.href='/login.html'">Ir para Login</button>
+    </div>
+  </div>
+
+  <script src="/public/js/data.js"></script>
+  <script src="/public/js/auth.js"></script>
+  <script src="/public/js/layout.js"></script>
+  <script>
+    const status = document.getElementById('status');
+    const checks = [
+      { name: 'Auth Module', test: () => typeof Auth !== 'undefined' },
+      { name: 'DB Module', test: () => typeof DB !== 'undefined' },
+      { name: 'Layout Module', test: () => typeof renderLayout !== 'undefined' },
+      { name: 'LocalStorage', test: () => { try { localStorage.setItem('t', 'ok'); localStorage.removeItem('t'); return true; } catch { return false; } } },
+      { name: 'Books', test: () => DB.getBooks().length > 0 },
+      { name: 'Users', test: () => DB.getUsers().length > 0 },
+      { name: 'Loans', test: () => DB.getLoans().length > 0 },
+      { name: 'Auth System', test: () => typeof Auth.login === 'function' }
+    ];
+
+    let html = '<div style="background: rgba(22, 163, 74, 0.1); padding: 1rem; border-radius: 0.5rem;">';
+    checks.forEach(check => {
+      try {
+        const passed = check.test();
+        const icon = passed ? '✅' : '❌';
+        html += `<div style="padding: 0.5rem 0;">${icon} ${check.name}</div>`;
+      } catch (e) {
+        html += `<div style="padding: 0.5rem 0; color: red;">❌ ${check.name}: ${e.message}</div>`;
+      }
+    });
+    html += '</div>';
+    
+    status.innerHTML = html;
+    console.log('All systems check completed!');
+  </script>
+</body>
+</html>

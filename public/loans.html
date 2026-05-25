@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Empréstimos — Biblioteca</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <script src="/js/data.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/layout.js"></script>
+  <script>
+    Auth.requireAuth();
+    let filter = 'all';
+
+    function statusBadge(s) {
+      const map = { active: ['badge-active', 'Ativo'], returned: ['badge-returned', 'Devolvido'], overdue: ['badge-overdue', 'Em Atraso'] };
+      const [cls, label] = map[s] || ['', s];
+      return `<span class="badge ${cls}">${label}</span>`;
+    }
+
+    function render() {
+      const allLoans = DB.getLoans();
+      const loans = filter === 'all' ? allLoans : allLoans.filter(l => l.status === filter);
+      const sorted = [...loans].reverse();
+
+      const rows = sorted.length === 0
+        ? `<tr><td colspan="7" class="empty-state">Nenhum empréstimo encontrado.</td></tr>`
+        : sorted.map(l => `
+          <tr>
+            <td>${escapeHtml(l.userName)}</td>
+            <td>${escapeHtml(l.bookTitle)}</td>
+            <td class="text-muted">${formatDate(l.loanDate)}</td>
+            <td class="text-muted">${formatDate(l.dueDate)}</td>
+            <td class="text-muted">${l.returnDate ? formatDate(l.returnDate) : '—'}</td>
+            <td>${l.fine > 0 ? `<span class="fine-amount">R$ ${l.fine.toFixed(2)}</span>` : '—'}</td>
+            <td class="actions-cell">
+              ${statusBadge(l.status)}
+              ${l.status !== 'returned' ? `<button class="btn btn-accent btn-sm" onclick="returnLoan('${l.id}')">Devolver</button>` : ''}
+              ${l.fine > 0 && l.status === 'returned' ? `<button class="btn btn-outline btn-sm" onclick="payFine('${l.id}')">Pagar Multa</button>` : ''}
+            </td>
+          </tr>
+        `).join('');
+
+      const content = `
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Empréstimos</h1>
+            <p class="page-description">Registrar empréstimos e devoluções (multa: R$ 2,00/dia)</p>
+          </div>
+          <button class="btn btn-primary" onclick="showLoanForm()">+ Registrar Empréstimo</button>
+        </div>
+        <div class="toolbar">
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn ${filter === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setFilter('all')">Todos</button>
+            <button class="btn ${filter === 'active' ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setFilter('active')">Ativos</button>
+            <button class="btn ${filter === 'overdue' ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setFilter('overdue')">Atrasados</button>
+            <button class="btn ${filter === 'returned' ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setFilter('returned')">Devolvidos</button>
+          </div>
+          <div class="text-muted">${sorted.length} empréstimo(s)</div>
+        </div>
+        <div class="table-card">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead><tr><th>Usuário</th><th>Livro</th><th>Empréstimo</th><th>Devolução prevista</th><th>Devolvido em</th><th>Multa</th><th>Ações</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      renderLayout('loans', content);
+    }
+
+    function setFilter(f) { filter = f; render(); }
+
+    function showLoanForm() {
+      const users = DB.getUsers();
+      const books = DB.getBooks().filter(b => b.available > 0);
+      const today = new Date();
+      const due = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+      if (books.length === 0) { alert('Nenhum livro disponível para empréstimo.'); return; }
+
+      const body = `
+        <form id="loan-form">
+          <div class="form-group">
+            <label>Usuário</label>
+            <select name="userId" required>
+              <option value="">Selecione...</option>
+              ${users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Livro</label>
+            <select name="bookId" required>
+              <option value="">Selecione...</option>
+              ${books.map(b => `<option value="${b.id}">${escapeHtml(b.title)} (${b.available} disp.)</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label>Data de devolução</label><input name="dueDate" type="date" required value="${due}" /></div>
+        </form>
+      `;
+      const footer = `
+        <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveLoan()">Registrar</button>
+      `;
+      openModal('Novo Empréstimo', body, footer);
+    }
+
+    function saveLoan() {
+      const f = document.getElementById('loan-form');
+      if (!f.reportValidity()) return;
+      const fd = new FormData(f);
+      const result = DB.createLoan({
+        userId: fd.get('userId'),
+        bookId: fd.get('bookId'),
+        dueDate: fd.get('dueDate')
+      });
+      if (!result.ok) { alert(result.error); return; }
+      closeModal();
+      render();
+    }
+
+    function returnLoan(id) {
+      const result = DB.returnLoan(id);
+      if (!result.ok) { alert(result.error); return; }
+      const loan = result.loan;
+      if (loan.fine > 0) alert(`Devolução registrada com atraso. Multa: R$ ${loan.fine.toFixed(2)}`);
+      render();
+    }
+
+    function payFine(id) {
+      if (!confirm('Confirmar pagamento da multa?')) return;
+      DB.payFine(id);
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relatórios — Biblioteca</title>
+  <link rel="stylesheet" href="/public/styles.css" />
+</head>
+<body>
+  <script src="/public/js/data.js"></script>
+  <script src="/public/js/auth.js"></script>
+  <script src="/public/js/layout.js"></script>
+  <script>
+    Auth.requireAuth();
+
+    const books = DB.getBooks();
+    const users = DB.getUsers();
+    const loans = DB.getLoans();
+
+    const active = loans.filter(l => l.status === 'active');
+    const overdue = loans.filter(l => l.status === 'overdue');
+    const returned = loans.filter(l => l.status === 'returned');
+    const totalFines = loans.reduce((s, l) => s + (l.fine || 0), 0);
+
+    const bookCount = {};
+    loans.forEach(l => { bookCount[l.bookTitle] = (bookCount[l.bookTitle] || 0) + 1; });
+    const topBooks = Object.entries(bookCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    const userCount = {};
+    loans.forEach(l => { userCount[l.userName] = (userCount[l.userName] || 0) + 1; });
+    const topUsers = Object.entries(userCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    const stats = [
+      { label: 'Ativos', value: active.length, icon: '🔄', cls: 'text-accent' },
+      { label: 'Em Atraso', value: overdue.length, icon: '⚠️', cls: 'text-danger' },
+      { label: 'Devolvidos', value: returned.length, icon: '✅', cls: 'text-success' },
+      { label: 'Multas Acumuladas', value: 'R$ ' + totalFines.toFixed(2), icon: '💰', cls: 'text-primary' }
+    ];
+
+    const statusBadge = (s) => {
+      const map = { active: ['badge-active', 'Ativo'], returned: ['badge-returned', 'Devolvido'], overdue: ['badge-overdue', 'Em Atraso'] };
+      const [cls, label] = map[s] || ['', s];
+      return `<span class="badge ${cls}">${label}</span>`;
+    };
+
+    const overdueRows = overdue.length === 0
+      ? `<tr><td colspan="5" class="empty-state">Nenhum atraso registrado. 🎉</td></tr>`
+      : overdue.map(l => `
+        <tr>
+          <td>${escapeHtml(l.userName)}</td>
+          <td>${escapeHtml(l.bookTitle)}</td>
+          <td class="text-muted">${formatDate(l.dueDate)}</td>
+          <td><span class="fine-amount">R$ ${l.fine.toFixed(2)}</span></td>
+          <td>${statusBadge(l.status)}</td>
+        </tr>
+      `).join('');
+
+    const historyRows = loans.length === 0
+      ? `<tr><td colspan="5" class="empty-state">Nenhum empréstimo registrado.</td></tr>`
+      : [...loans].reverse().map(l => `
+        <tr>
+          <td>${escapeHtml(l.userName)}</td>
+          <td>${escapeHtml(l.bookTitle)}</td>
+          <td class="text-muted">${formatDate(l.loanDate)}</td>
+          <td class="text-muted">${l.returnDate ? formatDate(l.returnDate) : '—'}</td>
+          <td>${statusBadge(l.status)}</td>
+        </tr>
+      `).join('');
+
+    const content = `
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Relatórios</h1>
+          <p class="page-description">Estatísticas e histórico de empréstimos</p>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        ${stats.map(s => `
+          <div class="stat-card">
+            <div class="stat-card-row">
+              <div>
+                <div class="stat-label">${s.label}</div>
+                <div class="stat-value">${s.value}</div>
+              </div>
+              <div class="stat-icon ${s.cls}">${s.icon}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+        <div class="table-card">
+          <div style="padding:1rem 1.5rem; border-bottom:1px solid var(--border); font-weight:600;">📚 Top Livros</div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <tbody>
+                ${topBooks.length === 0 ? `<tr><td class="empty-state">Sem dados</td></tr>` :
+                  topBooks.map(([title, count]) => `<tr><td>${escapeHtml(title)}</td><td style="text-align:right; font-weight:600;">${count}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="table-card">
+          <div style="padding:1rem 1.5rem; border-bottom:1px solid var(--border); font-weight:600;">👥 Top Usuários</div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <tbody>
+                ${topUsers.length === 0 ? `<tr><td class="empty-state">Sem dados</td></tr>` :
+                  topUsers.map(([name, count]) => `<tr><td>${escapeHtml(name)}</td><td style="text-align:right; font-weight:600;">${count}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section-title">⚠️ Empréstimos em Atraso</h2>
+      <div class="table-card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Usuário</th><th>Livro</th><th>Vencimento</th><th>Multa</th><th>Status</th></tr></thead>
+            <tbody>${overdueRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 class="section-title">📜 Histórico Completo</h2>
+      <div class="table-card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Usuário</th><th>Livro</th><th>Empréstimo</th><th>Devolução</th><th>Status</th></tr></thead>
+            <tbody>${historyRows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    renderLayout('reports', content);
+  </script>
+</body>
+</html>
