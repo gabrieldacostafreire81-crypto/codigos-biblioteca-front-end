@@ -11,7 +11,7 @@ const Auth = {
   },
   logout() {
     localStorage.removeItem(AUTH_KEY);
-    window.location.href = "/login.html";
+    window.location.href = "./login.html";
   },
   isAuthenticated() {
     return !!localStorage.getItem(AUTH_KEY);
@@ -21,6 +21,6 @@ const Auth = {
     return raw ? JSON.parse(raw) : null;
   },
   requireAuth() {
-    if (!this.isAuthenticated()) window.location.href = "/login.html";
+    if (!this.isAuthenticated()) window.location.href = "./login.html";
   }
 };
